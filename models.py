@@ -1,7 +1,8 @@
 
 import torch
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv,global_mean_pool
+from torch_geometric.nn import GCNConv
+from torch_geometric.nn.pool import global_mean_pool
 from torch.nn import Linear,Softmax
 from dataset import UPFD
 ### TO DO : define the dataset properly
@@ -14,15 +15,22 @@ class Original_model(torch.nn.Module):
         self.linear1 = Linear(64,32)
         self.linear2 = Linear(32,2)
         self.softmax = Softmax(dim=0)
+        self.pooling = global_mean_pool
         
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
+        batch_vev = data.batch
 
-        x = self.conv1(x, edge_index)
+        x = self.conv1(x,
+                    edge_index)
         x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
+        x = F.dropout(x,
+                       training=self.training)
+        x = self.conv2(x, 
+                       edge_index)
+        x = self.pooling(x,
+                         batch=batch_vev)
         x = self.linear1(x)
         x = self.linear2(x)
         return self.softmax(x)
-#dataset_upfd = UPFD('.','politifact','profile','train')
+dataset_upfd = UPFD('.','politifact',['profile','content'],'train')
