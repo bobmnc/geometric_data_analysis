@@ -61,6 +61,8 @@ if __name__=='__main__':
     parser.add_argument('--features', nargs='+', help='features to select', type = str,default='profile')
     parser.add_argument('--batch_size',help='features to select', type = int,default=8)
     args  = parser.parse_args()
+
+    torch.manual_seed(args.seed)
     train_dataset = UPFD('.',
                          'politifact',
                          args.features,
