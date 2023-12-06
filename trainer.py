@@ -5,6 +5,7 @@ from dataset import UPFD
 from tqdm import tqdm
 from torch_geometric.loader import DataLoader
 import torch
+import argparse
 
 def train(model,train_dataloader,test_dataloader,N_epochs,device='cuda:0'):
     loss_fn = nn.CrossEntropyLoss()
@@ -50,20 +51,31 @@ def train(model,train_dataloader,test_dataloader,N_epochs,device='cuda:0'):
                 print('Test set loss : {:.3f} accuracy :{} '.format(loss/n_tot,
                                                                     n_corrects/n_tot))
 if __name__=='__main__':
+    parser = argparse.ArgumentParser(description="Params for training models")
+
+    # Common params
+    parser.add_argument("--seed", help="random torch seed",type=int, default=1)
+    parser.add_argument("--model_dir", help="Direrctory to save the models",type =str, default='models')
+    
+    parser.add_argument("--epochs", help="Number of epochs", type=int, default=200)
+    parser.add_argument('--features', nargs='+', help='features to select', type = str,default='profile')
+    parser.add_argument('--batch_size',help='features to select', type = int,default=8)
+    args  = parser.parse_args()
     train_dataset = UPFD('.',
                          'politifact',
-                         'profile')
+                         args.features,
+                         'train')
     test_dataset = UPFD('.',
                         'politifact',
-                        'profile',
+                        args.features,
                         'test')
     model = Original_model(train_dataset)
     device = 'cpu'
-    train_dataloader = DataLoader(train_dataset,batch_size=4)
-    test_dataloader = DataLoader(test_dataset,batch_size=4)
+    train_dataloader = DataLoader(train_dataset,batch_size=args.batch_size)
+    test_dataloader = DataLoader(test_dataset,batch_size=args.batch_size)
     train(model=model,
           train_dataloader=train_dataloader,
           test_dataloader=train_dataloader,
           device=device,
-          N_epochs=200)
+          N_epochs=args.epochs)
 
