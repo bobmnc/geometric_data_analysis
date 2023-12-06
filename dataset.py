@@ -96,12 +96,23 @@ class UPFD(InMemoryDataset):
         self.root = root
         self.name = name
         self.feature = feature
-        super().__init__(root, transform, pre_transform, pre_filter)#,
+        print(self.feature)
+        print(isinstance(self.feature,list))
+        if isinstance(self.feature,list):
+            path_dir = osp.join(self.root, self.name, 'processed')
+            for ft in self.feature:
+                path_dir = osp.join(path_dir, ft)
+            print(path_dir)
+        else : 
+            path_dir =  osp.join(self.root, self.name, 'processed', self.feature)
+        self.path_dir_processed = path_dir
+        super().__init__(root, transform, pre_transform, pre_filter)
                          #force_reload=force_reload)
 
         assert split in ['train', 'val', 'test']
         path = self.processed_paths[['train', 'val', 'test'].index(split)]
         self.load(path)
+        
 
     @property
     def raw_dir(self) -> str:
@@ -109,8 +120,7 @@ class UPFD(InMemoryDataset):
 
     @property
     def processed_dir(self) -> str:
-        return osp.join(self.root, self.name, 'processed', self.feature)
-
+        return self.path_dir_processed
     @property
     def raw_file_names(self) -> List[str]:
         return [
@@ -128,16 +138,18 @@ class UPFD(InMemoryDataset):
         os.remove(path)
 
     def process(self):
-        if self.feature.isinstance(list):
+        if isinstance(self.feature,list):
             list_x= list()
             for ft in self.feature : 
-                list_x.append(sp.load_npz(osp.join(self.raw_dir,
-                                          f'new_{self.feature}_feature.npz')))
-            x = np.concatenate(list_x)
+                x = sp.load_npz(osp.join(self.raw_dir,
+                                          f'new_{ft}_feature.npz'))
+                x = torch.from_numpy(x.todense()).to(torch.float)
+                list_x.append(x)
+            x = torch.cat(list_x,dim=1)
         else : 
             x = sp.load_npz(
                 osp.join(self.raw_dir, f'new_{self.feature}_feature.npz'))
-        x = torch.from_numpy(x.todense()).to(torch.float)
+            x = torch.from_numpy(x.todense()).to(torch.float)
 
         edge_index = read_txt_array(osp.join(self.raw_dir, 'A.txt'), sep=',',
                                     dtype=torch.long).t()
