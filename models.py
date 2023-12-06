@@ -17,7 +17,7 @@ class Original_model(torch.nn.Module):
         self.softmax = Softmax(dim=0)
         self.pooling = global_mean_pool
         
-    def forward(self, data):
+    def forward(self, data,return_embed = False):
         x, edge_index = data.x, data.edge_index
         batch_vev = data.batch
 
@@ -30,7 +30,9 @@ class Original_model(torch.nn.Module):
                        edge_index)
         x = self.pooling(x,
                          batch=batch_vev)
+        if return_embed :
+            return x
         x = self.linear1(x)
         x = self.linear2(x)
         return self.softmax(x)
-dataset_upfd = UPFD('.','politifact',['profile','content'],'train')
+#dataset_upfd = UPFD('.','politifact',['profile','content'],'train')
