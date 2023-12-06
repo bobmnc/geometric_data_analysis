@@ -1,3 +1,6 @@
 __pycache__/
 *.pt
 .venv/
+*.npy
+*.npz
+*.h5
