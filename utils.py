@@ -7,5 +7,5 @@ def get_file_name_desc(desc):
             for element in value:
                 name+=str(element)
         else : 
-            name+=str(element)
+            name+=str(value)
     return name
