@@ -62,7 +62,7 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'loss': test_loss,
+                'loss': test_loss.item(),
                 'accuracy':test_accuracy,
                 'description_experiment':description_exp
                 }, osp.join(save_path,
