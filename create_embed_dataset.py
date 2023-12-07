@@ -21,9 +21,9 @@ def create_embedding_dataset(model_checkpoint,model_class):
                          description['features'],
                          'train')
     test_dataset = UPFD('.',
-                        description['dataset_name'],
-                        description['features'],
-                        'test')
+                       description['dataset_name'],
+                       description['features'],
+                       'test')
     model = model(dataset=train_dataset)
 
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -51,11 +51,11 @@ def create_embedding_dataset(model_checkpoint,model_class):
                 out = model(batch,
                             return_embed=True)
                 out = out.numpy()
+
                 list_out_train.append(out)
         list_out_train = np.concatenate(list_out_train)
-        list_out_train = np.reshape(list_out_train,(1,-1))
-        with h5py.File("embeddings_graphs.hdf5", "w") as f:
-            f.create_dataset("train_embeds",data = list_out_train)
+        
+        
     
     with torch.no_grad():
         list_out_test = list()
@@ -68,9 +68,10 @@ def create_embedding_dataset(model_checkpoint,model_class):
                 out = out.numpy()
                 list_out_test.append(out)
         list_out_test = np.concatenate(list_out_test)
-        list_out_test = np.reshape(list_out_test,(1,-1))
+
         with h5py.File("embeddings_graphs.hdf5", "w") as f:
             f.create_dataset("test_embeds",data = list_out_test)
+            f.create_dataset("train_embeds",data = list_out_train)
 
                 
 if __name__=='__main__':
