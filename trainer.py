@@ -63,7 +63,7 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 'loss': test_loss,
                 'description_experiment':description_exp
                 }, osp.join(save_path,
-                            f'best_model_{"".join(list(description_exp.values()))}')
+                            f'best_model_{"".join(list(description_exp.values()))}.pt')
                             )
                 best_test_loss = test_loss
 if __name__=='__main__':
