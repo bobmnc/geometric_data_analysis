@@ -7,6 +7,7 @@ from torch_geometric.loader import DataLoader
 import torch
 import argparse
 import os.path as osp
+from utils import get_file_name_desc
 
 
 def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_exp,device='cuda:0'):
@@ -56,6 +57,7 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 print('Test set loss : {:.3f} accuracy :{} '.format(test_loss,
                                                                    test_accuracy))
             if test_loss<= best_test_loss:
+                model_desc_str = get_file_name_desc(description_exp)
                 torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -63,7 +65,7 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 'loss': test_loss,
                 'description_experiment':description_exp
                 }, osp.join(save_path,
-                            f'best_model_{"".join(list(description_exp.values()))}.pt')
+                            f'best_model_{model_desc_str}.pt')
                             )
                 best_test_loss = test_loss
 if __name__=='__main__':
