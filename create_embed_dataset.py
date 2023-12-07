@@ -44,34 +44,46 @@ def create_embedding_dataset(model_checkpoint,model_class):
     model.eval()
     with torch.no_grad():
         list_out_train = list()
+        list_y_train = list()
         for batch in tqdm(train_dataloader,desc='Embedding train set'):
                 y = batch.y
                 batch = batch.to(device)
                 y = y.to(device)
                 out = model(batch,
                             return_embed=True)
-                out = out.numpy()
+                out = out.to('cpu').numpy()
+                y = y.to('cpu').numpy()
 
                 list_out_train.append(out)
+                list_y_train += list(y)
         list_out_train = np.concatenate(list_out_train)
+
         
         
     
     with torch.no_grad():
         list_out_test = list()
+        list_y_test = list()
         for batch in tqdm(test_dataloader,desc='Embedding test set'):
                 y = batch.y
                 batch = batch.to(device)
                 y = y.to(device)
                 out = model(batch,
                             return_embed=True)
-                out = out.numpy()
+                out = out.to('cpu').numpy()
+                y = y.to('cpu').numpy()
+                print(y.shape)
                 list_out_test.append(out)
+                list_y_test+= list(y)
+        
         list_out_test = np.concatenate(list_out_test)
+
 
         with h5py.File("embeddings_graphs.hdf5", "w") as f:
             f.create_dataset("test_embeds",data = list_out_test)
             f.create_dataset("train_embeds",data = list_out_train)
+            f.create_dataset('train_y',data=list_y_train)
+            f.create_dataset('test_y',data=list_y_test)
 
                 
 if __name__=='__main__':
