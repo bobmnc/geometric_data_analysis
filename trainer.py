@@ -6,8 +6,10 @@ from tqdm import tqdm
 from torch_geometric.loader import DataLoader
 import torch
 import argparse
+import os.path as osp
 
-def train(model,train_dataloader,test_dataloader,N_epochs,save_path,device='cuda:0'):
+
+def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_exp,device='cuda:0'):
     loss_fn = nn.CrossEntropyLoss()
     best_test_loss = 10**9
     
@@ -59,7 +61,10 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,device='cuda
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': test_loss,
-                }, save_path)
+                'description_experiment':description_exp
+                }, osp.join(save_path,
+                            f'best_model_{"".join(list(description_exp.values()))}')
+                            )
                 best_test_loss = test_loss
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description="Params for training models")
@@ -67,7 +72,7 @@ if __name__=='__main__':
     # Common params
     parser.add_argument("--seed", help="random torch seed",type=int, default=1)
     parser.add_argument("--model_dir", help="Direrctory to save the models",type =str, default='models')
-    parser.add_argument('--dataset',help='name of the dataset politifact or gossipcop',type=str,default='politifact')
+    parser.add_argument('--dataset_name',help='name of the dataset politifact or gossipcop',type=str,default='politifact')
     
     parser.add_argument("--epochs", help="Number of epochs", type=int, default=200)
     parser.add_argument('--features', nargs='+', help='features to select', type = str,default='profile')
@@ -77,11 +82,11 @@ if __name__=='__main__':
 
     torch.manual_seed(args.seed)
     train_dataset = UPFD('.',
-                         args.dataset,
+                         args.dataset_name,
                          args.features,
                          'train')
     test_dataset = UPFD('.',
-                        args.dataset,
+                        args.dataset_name,
                         args.features,
                         'test')
     model = Original_model(train_dataset)
@@ -90,10 +95,15 @@ if __name__=='__main__':
                                   batch_size=args.batch_size)
     test_dataloader = DataLoader(test_dataset,
                                  batch_size=args.batch_size)
+    description_exp = {'dataset_name':args.dataset_name,
+                       'features':args.features,
+                       'batch_size':args.batch_size}
     train(model=model,
           train_dataloader=train_dataloader,
           test_dataloader=train_dataloader,
           device=args.device,
           save_path=args.model_dir,
-          N_epochs=args.epochs)
+          N_epochs=args.epochs,
+          description_exp = description_exp
+          )
 
