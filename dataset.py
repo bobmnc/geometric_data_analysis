@@ -96,16 +96,17 @@ class UPFD(InMemoryDataset):
         self.root = root
         self.name = name
         self.feature = feature
-        print(self.feature)
-        print(isinstance(self.feature,list))
+        
         if isinstance(self.feature,list):
             path_dir = osp.join(self.root, self.name, 'processed')
+            features_str = str()
             for ft in self.feature:
-                path_dir = osp.join(path_dir, ft)
-            print(path_dir)
+                features_str+=str(ft)
+            path_dir = osp.join(self.root, self.name, 'processed', features_str)
         else : 
             path_dir =  osp.join(self.root, self.name, 'processed', self.feature)
         self.path_dir_processed = path_dir
+        print(path_dir)
         super().__init__(root, transform, pre_transform, pre_filter)
                          #force_reload=force_reload)
 
@@ -123,10 +124,17 @@ class UPFD(InMemoryDataset):
         return self.path_dir_processed
     @property
     def raw_file_names(self) -> List[str]:
-        return [
-            'node_graph_id.npy', 'graph_labels.npy', 'A.txt', 'train_idx.npy',
-            'val_idx.npy', 'test_idx.npy', f'new_{self.feature}_feature.npz'
-        ]
+        if isinstance(self.feature,list):
+
+            return [
+                'node_graph_id.npy', 'graph_labels.npy', 'A.txt', 'train_idx.npy',
+                'val_idx.npy', 'test_idx.npy']\
+                    +[f'new_{feature}_feature.npz' for feature in self.feature]
+        else :
+            return [
+                'node_graph_id.npy', 'graph_labels.npy', 'A.txt', 'train_idx.npy',
+                'val_idx.npy', 'test_idx.npy', f'new_{self.feature}_feature.npz'
+            ]
 
     @property
     def processed_file_names(self):
@@ -138,23 +146,33 @@ class UPFD(InMemoryDataset):
         os.remove(path)
 
     def process(self):
-        if isinstance(self.feature,list):
-            list_x= list()
-            for ft in self.feature : 
-                x = sp.load_npz(osp.join(self.raw_dir,
-                                          f'new_{ft}_feature.npz'))
+        if isinstance(self.feature, list):
+            list_x = []
+            edge_indices_list = []  # To store edge indices for each feature
+            for ft in self.feature:
+                x = sp.load_npz(osp.join(self.raw_dir, f'new_{ft}_feature.npz'))
                 x = torch.from_numpy(x.todense()).to(torch.float)
                 list_x.append(x)
-            x = torch.cat(list_x,dim=1)
-        else : 
+
+                edge_index = read_txt_array(osp.join(self.raw_dir, 'A.txt'), sep=',',
+                                            dtype=torch.long).t()
+                edge_index = coalesce(edge_index, num_nodes=x.size(0))
+                edge_indices_list.append(edge_index)
+
+            x = torch.cat(list_x, dim=1)
+            print('final_x shape', x.shape)
+
+            # Coalesce edge indices from all features
+            edge_index = torch.cat(edge_indices_list, dim=1)
+            edge_index = coalesce(edge_index, num_nodes=x.size(0))
+        else:
             x = sp.load_npz(
                 osp.join(self.raw_dir, f'new_{self.feature}_feature.npz'))
             x = torch.from_numpy(x.todense()).to(torch.float)
 
-        edge_index = read_txt_array(osp.join(self.raw_dir, 'A.txt'), sep=',',
-                                    dtype=torch.long).t()
-        edge_index = coalesce(edge_index, num_nodes=x.size(0))
-
+            edge_index = read_txt_array(osp.join(self.raw_dir, 'A.txt'), sep=',',
+                                        dtype=torch.long).t()
+            edge_index = coalesce(edge_index, num_nodes=x.size(0))
         y = np.load(osp.join(self.raw_dir, 'graph_labels.npy'))
         y = torch.from_numpy(y).to(torch.long)
         _, y = y.unique(sorted=True, return_inverse=True)
@@ -163,14 +181,13 @@ class UPFD(InMemoryDataset):
         batch = torch.from_numpy(batch).to(torch.long)
 
         node_slice = cumsum(batch.bincount())
-        edge_slice = cumsum(batch[edge_index[0].bincount()])
+        edge_slice = cumsum(batch[edge_index[0]].bincount())
         graph_slice = torch.arange(y.size(0) + 1)
         self.slices = {
             'x': node_slice,
             'edge_index': edge_slice,
             'y': graph_slice
         }
-
         edge_index -= node_slice[batch[edge_index[0]]].view(1, -1)
         self.data = Data(x=x, edge_index=edge_index, y=y)
 
@@ -182,6 +199,8 @@ class UPFD(InMemoryDataset):
             if self.pre_transform is not None:
                 data_list = [self.pre_transform(d) for d in data_list]
             self.save(data_list, path)
+
+
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}({len(self)}, name={self.name}, '
