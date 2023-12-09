@@ -95,6 +95,8 @@ class UPFD(InMemoryDataset):
     ):
         self.root = root
         self.name = name
+        if isinstance(feature,list) and len(feature)==1:
+            feature = feature[0]
         self.feature = feature
         
         if isinstance(self.feature,list):
@@ -166,9 +168,16 @@ class UPFD(InMemoryDataset):
             edge_index = torch.cat(edge_indices_list, dim=1)
             edge_index = coalesce(edge_index, num_nodes=x.size(0))
         else:
-            x = sp.load_npz(
-                osp.join(self.raw_dir, f'new_{self.feature}_feature.npz'))
-            x = torch.from_numpy(x.todense()).to(torch.float)
+            if self.feature == 'no_feature':
+                ## if we want the model to look just at the shape of the graph
+                dataset_size = {'politifact':41054,
+                                'gossipcop':314_262 }
+                x = torch.ones([dataset_size[self.name],
+                                1],dtype=torch.float)
+            else : 
+                x = sp.load_npz(
+                    osp.join(self.raw_dir, f'new_{self.feature}_feature.npz'))
+                x = torch.from_numpy(x.todense()).to(torch.float)
 
             edge_index = read_txt_array(osp.join(self.raw_dir, 'A.txt'), sep=',',
                                         dtype=torch.long).t()
