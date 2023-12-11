@@ -1,12 +1,13 @@
 import torch.nn as nn
 from torch import optim
-from models import Original_model
+from models import Original_model,Deepset
 from dataset import UPFD
 from tqdm import tqdm
 from torch_geometric.loader import DataLoader
 import torch
 import argparse
 import os.path as osp
+import sklearn.metrics as metrics
 from utils import get_file_name_desc
 
 
@@ -39,9 +40,14 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                                                                 loss/n_tot,
                                                                 n_corrects/n_tot))
         with torch.no_grad():
+            list_y = list()
+            list_y_pred = list()
+            n_corrects = 0
+            n_tot = 0
             for batch in test_dataloader:
                 
                 y = batch.y
+                list_y.append(y)
                 batch = batch.to(device)
                 y = y.to(device)
                 out = model(batch)
@@ -49,8 +55,17 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
 
                 tot_loss +=loss.cpu().detach().item()
                 pred = out.argmax(dim=-1)
+                list_y_pred.append(pred)
                 n_tot+= len(pred)
                 n_corrects+= (pred==y).sum()
+            list_y_pred = torch.cat(list_y_pred).cpu().numpy()
+            list_y = torch.cat(list_y).cpu().numpy()
+            f1_score = metrics.f1_score(list_y,
+                                        list_y_pred)
+            roc_auc = metrics.roc_auc_score(list_y,
+                                            list_y_pred)
+            recall = metrics.recall_score(list_y,
+                                          list_y_pred)
             test_loss  = loss/n_tot
             test_accuracy = n_corrects/n_tot
             if epoch%5==0:
@@ -64,11 +79,15 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': test_loss.item(),
                 'accuracy':test_accuracy,
+                'roc_auc':roc_auc,
+                'f1 score':f1_score,
+                'recall':recall,
                 'description_experiment':description_exp
                 }, osp.join(save_path,
                             f'best_model_{model_desc_str}.pt')
                             )
                 best_test_loss = test_loss
+        
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description="Params for training models")
 
@@ -81,9 +100,16 @@ if __name__=='__main__':
     parser.add_argument('--features', nargs='+', help='features to select', type = str,default='profile')
     parser.add_argument('--batch_size',help='features to select', type = int,default=8)
     parser.add_argument('--device',help='device for training model',type=str,default='cpu')
+    parser.add_argument('--model',help='class of model original or deepset',type=str,default = 'original')
     args  = parser.parse_args()
 
     torch.manual_seed(args.seed)
+    if len(args.features)==1:
+        args.features=args.features[0]
+    print(args.features)
+    dic_models = {'original':Original_model,
+                  'deepset':Deepset}
+
     train_dataset = UPFD('.',
                          args.dataset_name,
                          args.features,
@@ -92,7 +118,7 @@ if __name__=='__main__':
                         args.dataset_name,
                         args.features,
                         'test')
-    model = Original_model(train_dataset)
+    model = dic_models[args.model](train_dataset)
     device = 'cpu'
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=args.batch_size)
@@ -100,7 +126,8 @@ if __name__=='__main__':
                                  batch_size=args.batch_size)
     description_exp = {'dataset_name':args.dataset_name,
                        'features':args.features,
-                       'batch_size':args.batch_size}
+                       'batch_size':args.batch_size,
+                       'model':args.model}
     train(model=model,
           train_dataloader=train_dataloader,
           test_dataloader=train_dataloader,
