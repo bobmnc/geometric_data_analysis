@@ -42,6 +42,8 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
         with torch.no_grad():
             list_y = list()
             list_y_pred = list()
+            n_corrects = 0
+            n_tot = 0
             for batch in test_dataloader:
                 
                 y = batch.y
@@ -56,12 +58,14 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 list_y_pred.append(pred)
                 n_tot+= len(pred)
                 n_corrects+= (pred==y).sum()
-            list_y_pred = torch.cat(list_y_pred).numpy()
-            list_y = torch.cat(list_y).numpy()
+            list_y_pred = torch.cat(list_y_pred).cpu().numpy()
+            list_y = torch.cat(list_y).cpu().numpy()
             f1_score = metrics.f1_score(list_y,
                                         list_y_pred)
             roc_auc = metrics.roc_auc_score(list_y,
                                             list_y_pred)
+            recall = metrics.recall_score(list_y,
+                                          list_y_pred)
             test_loss  = loss/n_tot
             test_accuracy = n_corrects/n_tot
             if epoch%5==0:
@@ -77,6 +81,7 @@ def train(model,train_dataloader,test_dataloader,N_epochs,save_path,description_
                 'accuracy':test_accuracy,
                 'roc_auc':roc_auc,
                 'f1 score':f1_score,
+                'recall':recall,
                 'description_experiment':description_exp
                 }, osp.join(save_path,
                             f'best_model_{model_desc_str}.pt')
